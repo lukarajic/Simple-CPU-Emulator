@@ -1,14 +1,21 @@
 #include "CPU.hpp"
+#include "Memory.hpp"
 #include <iostream>
 #include <iomanip>
 
-CPU::CPU() {
+CPU::CPU(Memory& memory) : mem(memory) {
     reset();
 }
 
 void CPU::reset() {
     regs.fill(0);
     pc = 0;
+}
+
+uint32_t CPU::fetch() {
+    uint32_t instr = mem.read32(pc);
+    pc += 4;
+    return instr;
 }
 
 void CPU::dump_registers() const {

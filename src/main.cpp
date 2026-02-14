@@ -5,20 +5,20 @@
 int main() {
     std::cout << "Simple CPU Emulator Initialized" << std::endl;
 
-    CPU cpu;
     Memory mem(1024 * 1024); // 1MB Memory
-
-    cpu.dump_registers();
+    CPU cpu(mem);
 
     // Basic Memory Test
     uint32_t test_addr = 0x100;
     uint32_t test_val = 0xDEADBEEF;
     mem.write32(test_addr, test_val);
-    uint32_t read_val = mem.read32(test_addr);
+    
+    // Test Fetch
+    mem.write32(0, 0x12345678); // Write dummy instruction at address 0
+    uint32_t instr = cpu.fetch();
 
-    std::cout << "Memory Test: wrote 0x" << std::hex << test_val 
-              << " to 0x" << test_addr 
-              << ", read back 0x" << read_val << std::endl;
+    std::cout << "Fetch Test: fetched 0x" << std::hex << instr << " from PC 0" << std::endl;
+    cpu.dump_registers();
 
     return 0;
 }
