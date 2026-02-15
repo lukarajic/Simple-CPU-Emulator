@@ -8,16 +8,19 @@ int main() {
     Memory mem(1024 * 1024); // 1MB Memory
     CPU cpu(mem);
 
-    // Basic Memory Test
-    uint32_t test_addr = 0x100;
-    uint32_t test_val = 0xDEADBEEF;
-    mem.write32(test_addr, test_val);
-    
-    // Test Fetch
-    mem.write32(0, 0x12345678); // Write dummy instruction at address 0
-    uint32_t instr = cpu.fetch();
+    // Load program into memory
+    // 1. addi x1, x0, 10  -> 0x00a00093
+    // 2. addi x2, x1, -5  -> 0xffb08113
+    std::vector<uint32_t> program = {
+        0x00a00093,
+        0xffb08113
+    };
+    mem.load_program(program);
 
-    std::cout << "Fetch Test: fetched 0x" << std::hex << instr << " from PC 0" << std::endl;
+    std::cout << "Running program..." << std::endl;
+    cpu.step(); // Execute addi x1, x0, 10
+    cpu.step(); // Execute addi x2, x1, -5
+
     cpu.dump_registers();
 
     return 0;
