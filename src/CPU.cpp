@@ -28,24 +28,62 @@ void CPU::execute(uint32_t instr) {
     uint8_t rd = (instr >> 7) & 0x1F;
     uint8_t funct3 = (instr >> 12) & 0x07;
     uint8_t rs1 = (instr >> 15) & 0x1F;
+    uint8_t rs2 = (instr >> 20) & 0x1F;
+    uint8_t funct7 = (instr >> 25) & 0x7F;
     int32_t imm = sign_extend((instr >> 20) & 0xFFF, 12);
 
     if (opcode == 0x13) { // OP-IMM
         switch (funct3) {
             case 0x0: // ADDI
-                if (rd != 0) {
-                    regs[rd] = regs[rs1] + imm;
-                }
+                if (rd != 0) regs[rd] = regs[rs1] + imm;
                 break;
             default:
                 std::cerr << "Unknown funct3 for OP-IMM: 0x" << std::hex << (int)funct3 << std::endl;
+                break;
+        }
+    } else if (opcode == 0x33) { // OP (R-type)
+        switch (funct3) {
+            case 0x0: 
+                if (funct7 == 0x00) { // ADD
+                    if (rd != 0) regs[rd] = regs[rs1] + regs[rs2];
+                } else if (funct7 == 0x20) { // SUB
+                    if (rd != 0) regs[rd] = regs[rs1] - regs[rs2];
+                }
+                break;
+            case 0x1: // SLL (Shift Left Logical)
+                if (rd != 0) regs[rd] = regs[rs1] << (regs[rs2] & 0x1F);
+                break;
+            case 0x2: // SLT (Set Less Than)
+                if (rd != 0) regs[rd] = ((int32_t)regs[rs1] < (int32_t)regs[rs2]) ? 1 : 0;
+                break;
+            case 0x3: // SLTU (Set Less Than Unsigned)
+                if (rd != 0) regs[rd] = (regs[rs1] < regs[rs2]) ? 1 : 0;
+                break;
+            case 0x4: // XOR
+                if (rd != 0) regs[rd] = regs[rs1] ^ regs[rs2];
+                break;
+            case 0x5:
+                if (funct7 == 0x00) { // SRL (Shift Right Logical)
+                    if (rd != 0) regs[rd] = regs[rs1] >> (regs[rs2] & 0x1F);
+                } else if (funct7 == 0x20) { // SRA (Shift Right Arithmetic)
+                    if (rd != 0) regs[rd] = (int32_t)regs[rs1] >> (regs[rs2] & 0x1F);
+                }
+                break;
+            case 0x6: // OR
+                if (rd != 0) regs[rd] = regs[rs1] | regs[rs2];
+                break;
+            case 0x7: // AND
+                if (rd != 0) regs[rd] = regs[rs1] & regs[rs2];
+                break;
+            default:
+                std::cerr << "Unknown funct3 for OP: 0x" << std::hex << (int)funct3 << std::endl;
                 break;
         }
     } else {
         std::cerr << "Unknown opcode: 0x" << std::hex << (int)opcode << std::endl;
     }
 
-    // Ensure x0 is always 0 (redundant here but good practice)
+    // Ensure x0 is always 0
     regs[0] = 0;
 }
 
