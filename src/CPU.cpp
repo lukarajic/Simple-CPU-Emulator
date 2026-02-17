@@ -30,12 +30,47 @@ void CPU::execute(uint32_t instr) {
     uint8_t rs1 = (instr >> 15) & 0x1F;
     uint8_t rs2 = (instr >> 20) & 0x1F;
     uint8_t funct7 = (instr >> 25) & 0x7F;
+
+    // I-type immediate (for ADDI, etc.)
     int32_t imm = sign_extend((instr >> 20) & 0xFFF, 12);
+    // Shift amount for immediate shifts (SLLI, SRLI, SRAI)
+    uint8_t shamt = (instr >> 20) & 0x1F;
 
     if (opcode == 0x13) { // OP-IMM
         switch (funct3) {
             case 0x0: // ADDI
                 if (rd != 0) regs[rd] = regs[rs1] + imm;
+                break;
+            case 0x1: // SLLI
+                if (funct7 == 0x00) {
+                    if (rd != 0) regs[rd] = regs[rs1] << shamt;
+                } else {
+                    std::cerr << "Invalid funct7 for SLLI: 0x" << std::hex << (int)funct7 << std::endl;
+                }
+                break;
+            case 0x2: // SLTI
+                if (rd != 0) regs[rd] = ((int32_t)regs[rs1] < imm) ? 1 : 0;
+                break;
+            case 0x3: // SLTIU
+                if (rd != 0) regs[rd] = (regs[rs1] < (uint32_t)imm) ? 1 : 0;
+                break;
+            case 0x4: // XORI
+                if (rd != 0) regs[rd] = regs[rs1] ^ imm;
+                break;
+            case 0x5: // SRLI / SRAI
+                if (funct7 == 0x00) { // SRLI
+                    if (rd != 0) regs[rd] = regs[rs1] >> shamt;
+                } else if (funct7 == 0x20) { // SRAI
+                    if (rd != 0) regs[rd] = (int32_t)regs[rs1] >> shamt;
+                } else {
+                    std::cerr << "Invalid funct7 for SRLI/SRAI: 0x" << std::hex << (int)funct7 << std::endl;
+                }
+                break;
+            case 0x6: // ORI
+                if (rd != 0) regs[rd] = regs[rs1] | imm;
+                break;
+            case 0x7: // ANDI
+                if (rd != 0) regs[rd] = regs[rs1] & imm;
                 break;
             default:
                 std::cerr << "Unknown funct3 for OP-IMM: 0x" << std::hex << (int)funct3 << std::endl;
