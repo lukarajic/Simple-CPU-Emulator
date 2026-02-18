@@ -9,28 +9,27 @@ int main() {
     CPU cpu(mem);
 
     // Load program into memory
-    // Tests for logical immediate and shift instructions
-    // 1. ori x5, x0, 10           ; x5 = 10
-    // 2. andi x6, x5, 6           ; x6 = 10 & 6 = 2
-    // 3. xori x7, x6, 15          ; x7 = 2 ^ 15 = 13
-    // 4. slli x8, x7, 2           ; x8 = 13 << 2 = 52
-    // 5. srli x9, x8, 1           ; x9 = 52 >> 1 = 26
-    // 6. addi x10, x0, -100       ; x10 = -100
-    // 7. srai x11, x10, 2         ; x11 = -100 >> 2 = -25 (arithmetic)
-    // 8. slti x12, x0, -1         ; x12 = (0 < -1) = 0
-    // 9. sltiu x13, x0, 1         ; x13 = (0 < 1) = 1
+    // Tests for LOAD instructions
+    // Store 0x11223344 at address 0x100
+    // addi x1, x0, 0x100 ; x1 = 0x100
+    //
+    // 1. lw x2, 0(x1)   ; x2 = 0x11223344
+    // 2. lh x3, 0(x1)   ; x3 = 0xFFFF3344 (signed extension of 0x3344)
+    // 3. lhu x4, 0(x1)  ; x4 = 0x00003344 (unsigned extension of 0x3344)
+    // 4. lb x5, 0(x1)   ; x5 = 0xFFFFFF44 (signed extension of 0x44)
+    // 5. lbu x6, 0(x1)  ; x6 = 0x00000044 (unsigned extension of 0x44)
     std::vector<uint32_t> program = {
-        0x00A06293,
-        0x0062F313,
-        0x00F34393,
-        0x00239413,
-        0x00145493,
-        0xF9C00513,
-        0x40255593,
-        0xFFF02613,
-        0x00103693
+        0x10000093, // addi x1, x0, 0x100 (sets x1 = 0x100 directly)
+        0x0000A103, // lw x2, 0(x1)   ; Corrected: rs1=1
+        0x00009183, // lh x3, 0(x1)   ; Corrected: rs1=1
+        0x0000D203, // lhu x4, 0(x1)  ; Corrected: rs1=1
+        0x00008283, // lb x5, 0(x1)   ; Corrected: rs1=1
+        0x0000C303  // lbu x6, 0(x1)  ; Corrected: rs1=1
     };
     mem.load_program(program);
+
+    // Manually write the test data into memory at 0x100
+    mem.write32(0x100, 0x11223344);
 
     std::cout << "Running program..." << std::endl;
     for (size_t i = 0; i < program.size(); ++i) {

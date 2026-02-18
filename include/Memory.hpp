@@ -12,6 +12,12 @@ public:
     // Read a 32-bit word from memory
     uint32_t read32(uint32_t address) const;
 
+    // Read a 16-bit halfword from memory
+    uint16_t read16(uint32_t address) const;
+
+    // Read an 8-bit byte from memory
+    uint8_t read8(uint32_t address) const;
+
     // Write a 32-bit word to memory
     void write32(uint32_t address, uint32_t value);
 

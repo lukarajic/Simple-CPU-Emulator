@@ -76,6 +76,28 @@ void CPU::execute(uint32_t instr) {
                 std::cerr << "Unknown funct3 for OP-IMM: 0x" << std::hex << (int)funct3 << std::endl;
                 break;
         }
+    } else if (opcode == 0x03) { // LOAD
+        uint32_t addr = regs[rs1] + imm;
+        switch (funct3) {
+            case 0x0: // LB
+                if (rd != 0) regs[rd] = sign_extend(mem.read8(addr), 8);
+                break;
+            case 0x1: // LH
+                if (rd != 0) regs[rd] = sign_extend(mem.read16(addr), 16);
+                break;
+            case 0x2: // LW
+                if (rd != 0) regs[rd] = mem.read32(addr);
+                break;
+            case 0x4: // LBU
+                if (rd != 0) regs[rd] = mem.read8(addr);
+                break;
+            case 0x5: // LHU
+                if (rd != 0) regs[rd] = mem.read16(addr);
+                break;
+            default:
+                std::cerr << "Unknown funct3 for LOAD: 0x" << std::hex << (int)funct3 << std::endl;
+                break;
+        }
     } else if (opcode == 0x33) { // OP (R-type)
         switch (funct3) {
             case 0x0: 
