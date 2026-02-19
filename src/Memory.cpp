@@ -48,6 +48,24 @@ void Memory::write32(uint32_t address, uint32_t value) {
     mem[address + 3] = (value >> 24) & 0xFF;
 }
 
+void Memory::write16(uint32_t address, uint16_t value) {
+    if (address + 1 >= mem.size()) {
+        std::cerr << "Memory write16 out of bounds at 0x" << std::hex << address << std::endl;
+        return;
+    }
+    // Little-endian write
+    mem[address]     = value & 0xFF;
+    mem[address + 1] = (value >> 8) & 0xFF;
+}
+
+void Memory::write8(uint32_t address, uint8_t value) {
+    if (address >= mem.size()) {
+        std::cerr << "Memory write8 out of bounds at 0x" << std::hex << address << std::endl;
+        return;
+    }
+    mem[address] = value;
+}
+
 void Memory::load_program(const std::vector<uint32_t>& program, uint32_t start_address) {
     for (size_t i = 0; i < program.size(); ++i) {
         write32(start_address + (i * 4), program[i]);

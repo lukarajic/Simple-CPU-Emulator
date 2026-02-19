@@ -33,10 +33,16 @@ void CPU::execute(uint32_t instr) {
 
     // I-type immediate (for ADDI, etc.)
     int32_t imm = sign_extend((instr >> 20) & 0xFFF, 12);
+    // S-type immediate (for STORE)
+    int32_t s_imm = sign_extend(((instr >> 25) << 5) | ((instr >> 7) & 0x1F), 12);
+    // U-type immediate (for LUI, AUIPC)
+    int32_t u_imm = (instr & 0xFFFFF000);
     // Shift amount for immediate shifts (SLLI, SRLI, SRAI)
     uint8_t shamt = (instr >> 20) & 0x1F;
 
-    if (opcode == 0x13) { // OP-IMM
+    if (opcode == 0x37) { // LUI
+        if (rd != 0) regs[rd] = u_imm;
+    } else if (opcode == 0x13) { // OP-IMM
         switch (funct3) {
             case 0x0: // ADDI
                 if (rd != 0) regs[rd] = regs[rs1] + imm;
@@ -96,6 +102,22 @@ void CPU::execute(uint32_t instr) {
                 break;
             default:
                 std::cerr << "Unknown funct3 for LOAD: 0x" << std::hex << (int)funct3 << std::endl;
+                break;
+        }
+    } else if (opcode == 0x23) { // STORE
+        uint32_t addr = regs[rs1] + s_imm;
+        switch (funct3) {
+            case 0x0: // SB
+                mem.write8(addr, regs[rs2] & 0xFF);
+                break;
+            case 0x1: // SH
+                mem.write16(addr, regs[rs2] & 0xFFFF);
+                break;
+            case 0x2: // SW
+                mem.write32(addr, regs[rs2]);
+                break;
+            default:
+                std::cerr << "Unknown funct3 for STORE: 0x" << std::hex << (int)funct3 << std::endl;
                 break;
         }
     } else if (opcode == 0x33) { // OP (R-type)

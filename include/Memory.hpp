@@ -21,6 +21,12 @@ public:
     // Write a 32-bit word to memory
     void write32(uint32_t address, uint32_t value);
 
+    // Write a 16-bit halfword to memory
+    void write16(uint32_t address, uint16_t value);
+
+    // Write an 8-bit byte to memory
+    void write8(uint32_t address, uint8_t value);
+
     // Load a program into memory starting at an offset
     void load_program(const std::vector<uint32_t>& program, uint32_t start_address = 0);
 
