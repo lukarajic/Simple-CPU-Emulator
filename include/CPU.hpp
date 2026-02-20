@@ -25,6 +25,9 @@ public:
     // Debug: Print register contents
     void dump_registers() const;
 
+    // Get current PC
+    uint32_t fetch_pc() const { return pc; }
+
 private:
     std::array<uint32_t, 32> regs; // x0-x31
     uint32_t pc;                   // Program Counter

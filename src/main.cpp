@@ -9,31 +9,32 @@ int main() {
     CPU cpu(mem);
 
     // Load program into memory
-    // Tests for LUI and STORE instructions
-    // 1. lui x2, 0x12345        ; x2 = 0x12345000
-    // 2. addi x2, x2, 0x678     ; x2 = 0x12345678
-    // 3. addi x1, x0, 0x100     ; x1 = 0x100
-    // 4. sw x2, 0(x1)           ; mem[0x100] = 0x12345678
-    // 5. sh x2, 4(x1)           ; mem[0x104] = 0x5678
-    // 6. sb x2, 8(x1)           ; mem[0x108] = 0x78
-    // 7. lw x3, 0(x1)           ; x3 = 0x12345678
-    // 8. lw x4, 4(x1)           ; x4 = 0x00005678
-    // 9. lw x5, 8(x1)           ; x5 = 0x00000078
+    // Tests for BRANCH instructions
+    // 1. addi x1, x0, 10
+    // 2. addi x2, x0, 10
+    // 3. beq x1, x2, 8      ; Should jump to instruction 5
+    // 4. addi x3, x0, 1     ; Should be skipped
+    // 5. addi x4, x0, 2
+    // 6. bne x1, x0, 8      ; Should jump to instruction 8
+    // 7. addi x5, x0, 3     ; Should be skipped
+    // 8. addi x6, x0, 4
     std::vector<uint32_t> program = {
-        0x12345137,
-        0x67810113,
-        0x10000093,
-        0x0020A023,
-        0x00209223,
-        0x00208423,
-        0x0000A183,
-        0x0040A203,
-        0x0080A283
+        0x00a00093,
+        0x00a00113,
+        0x00208463,
+        0x00100193,
+        0x00200213,
+        0x00009463,
+        0x00300293,
+        0x00400313
     };
     mem.load_program(program);
 
     std::cout << "Running program..." << std::endl;
-    for (size_t i = 0; i < program.size(); ++i) {
+    // We don't know exactly how many steps because of jumps
+    // We'll run for a fixed number of steps that is enough
+    for (int i = 0; i < 10; ++i) {
+        if (cpu.fetch_pc() >= program.size() * 4) break; 
         cpu.step();
     }
 

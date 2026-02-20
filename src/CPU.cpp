@@ -35,13 +35,54 @@ void CPU::execute(uint32_t instr) {
     int32_t imm = sign_extend((instr >> 20) & 0xFFF, 12);
     // S-type immediate (for STORE)
     int32_t s_imm = sign_extend(((instr >> 25) << 5) | ((instr >> 7) & 0x1F), 12);
+    // B-type immediate (for BRANCH)
+    int32_t b_imm = sign_extend(((instr >> 31) << 12) | (((instr >> 7) & 0x1) << 11) | (((instr >> 25) & 0x3F) << 5) | (((instr >> 8) & 0xF) << 1), 13);
     // U-type immediate (for LUI, AUIPC)
     int32_t u_imm = (instr & 0xFFFFF000);
+    // J-type immediate (for JAL)
+    int32_t j_imm = sign_extend(((instr >> 31) << 20) | (((instr >> 12) & 0xFF) << 12) | (((instr >> 20) & 0x1) << 11) | (((instr >> 21) & 0x3FF) << 1), 21);
     // Shift amount for immediate shifts (SLLI, SRLI, SRAI)
     uint8_t shamt = (instr >> 20) & 0x1F;
 
     if (opcode == 0x37) { // LUI
         if (rd != 0) regs[rd] = u_imm;
+    } else if (opcode == 0x17) { // AUIPC
+        if (rd != 0) regs[rd] = (pc - 4) + u_imm;
+    } else if (opcode == 0x6F) { // JAL
+        if (rd != 0) regs[rd] = pc;
+        pc = (pc - 4) + j_imm;
+    } else if (opcode == 0x67) { // JALR
+        uint32_t target = (regs[rs1] + imm) & ~1;
+        if (rd != 0) regs[rd] = pc;
+        pc = target;
+    } else if (opcode == 0x63) { // BRANCH
+        bool take_branch = false;
+        switch (funct3) {
+            case 0x0: // BEQ
+                take_branch = (regs[rs1] == regs[rs2]);
+                break;
+            case 0x1: // BNE
+                take_branch = (regs[rs1] != regs[rs2]);
+                break;
+            case 0x4: // BLT
+                take_branch = ((int32_t)regs[rs1] < (int32_t)regs[rs2]);
+                break;
+            case 0x5: // BGE
+                take_branch = ((int32_t)regs[rs1] >= (int32_t)regs[rs2]);
+                break;
+            case 0x6: // BLTU
+                take_branch = (regs[rs1] < regs[rs2]);
+                break;
+            case 0x7: // BGEU
+                take_branch = (regs[rs1] >= regs[rs2]);
+                break;
+            default:
+                std::cerr << "Unknown funct3 for BRANCH: 0x" << std::hex << (int)funct3 << std::endl;
+                break;
+        }
+        if (take_branch) {
+            pc = (pc - 4) + b_imm;
+        }
     } else if (opcode == 0x13) { // OP-IMM
         switch (funct3) {
             case 0x0: // ADDI
