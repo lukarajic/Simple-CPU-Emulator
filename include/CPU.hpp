@@ -25,6 +25,9 @@ public:
     // Debug: Print register contents
     void dump_registers() const;
 
+    // Get a specific register value
+    uint32_t get_reg(int reg_num) const;
+
     // Get current PC
     uint32_t fetch_pc() const { return pc; }
 

@@ -217,3 +217,10 @@ void CPU::dump_registers() const {
     }
     std::cout << "-----------------" << std::endl;
 }
+
+uint32_t CPU::get_reg(int reg_num) const {
+    if (reg_num < 0 || reg_num > 31) {
+        return 0;
+    }
+    return regs[reg_num];
+}
