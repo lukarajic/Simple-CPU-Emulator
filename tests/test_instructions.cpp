@@ -11,6 +11,7 @@ protected:
     InstructionTest() : mem(1024 * 1024), cpu(mem) {}
 
     void load_and_run(const std::vector<uint32_t>& program) {
+        cpu.reset(); // Reset CPU state before running each program
         mem.load_program(program);
         for (size_t i = 0; i < program.size(); ++i) {
             cpu.step();
@@ -119,4 +120,48 @@ TEST_F(InstructionTest, ShiftInstructions) {
     ASSERT_EQ(cpu.get_reg(7), 64u);
     ASSERT_EQ(cpu.get_reg(8), 4u);
     ASSERT_EQ(cpu.get_reg(9), (uint32_t)-13);
+}
+
+TEST_F(InstructionTest, LoadStoreInstructions) {
+    // Test Load instructions
+    // Store 0x11223344 at address 0x100
+    mem.write32(0x100, 0x11223344u);
+
+    std::vector<uint32_t> load_program = {
+        0x10000093, // addi x1, x0, 0x100 (sets x1 = 0x100 directly)
+        0x0000A103, // lw x2, 0(x1)
+        0x00009183, // lh x3, 0(x1)
+        0x0000D203, // lhu x4, 0(x1)
+        0x00008283, // lb x5, 0(x1)
+        0x0000C303  // lbu x6, 0(x1)
+    };
+    load_and_run(load_program);
+
+    ASSERT_EQ(cpu.get_reg(2), 0x11223344u);
+    ASSERT_EQ(cpu.get_reg(3), 0x00003344u); // 0x3344 as signed 16-bit is positive
+    ASSERT_EQ(cpu.get_reg(4), 0x00003344u);
+    ASSERT_EQ(cpu.get_reg(5), 0x00000044u); // 0x44 as signed 8-bit is positive
+    ASSERT_EQ(cpu.get_reg(6), 0x00000044u);
+
+    // Test Store instructions
+    // Set x2 to 0x12345678 and x1 to 0x200
+    // Then store and load back to verify
+    std::vector<uint32_t> store_program = {
+        0x12345137, // lui x2, 0x12345  ; x2 = 0x12345000
+        0x67810113, // addi x2, x2, 0x678 ; x2 = 0x12345678
+        0x20000093, // addi x1, x0, 0x200 ; x1 = 0x200
+
+        0x0020A023, // sw x2, 0(x1)   ; mem[0x200] = 0x12345678
+        0x00209223, // sh x2, 4(x1)   ; mem[0x204] = 0x5678
+        0x00208423, // sb x2, 8(x1)   ; mem[0x208] = 0x78
+
+        0x0000A183, // lw x3, 0(x1)   ; x3 = mem[0x200] = 0x12345678
+        0x0040A203, // lw x4, 4(x1)   ; x4 = mem[0x204] = 0x00005678
+        0x0080A283  // lw x5, 8(x1)   ; x5 = mem[0x208] = 0x00000078
+    };
+    load_and_run(store_program);
+
+    ASSERT_EQ(cpu.get_reg(3), 0x12345678u);
+    ASSERT_EQ(cpu.get_reg(4), 0x00005678u);
+    ASSERT_EQ(cpu.get_reg(5), 0x00000078u);
 }
