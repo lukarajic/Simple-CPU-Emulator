@@ -89,3 +89,34 @@ TEST_F(InstructionTest, ITypeLogical) {
     ASSERT_EQ(cpu.get_reg(12), 14u);
     ASSERT_EQ(cpu.get_reg(13), 6u);
 }
+
+TEST_F(InstructionTest, ShiftInstructions) {
+    // 1. addi x1, x0, 2          ; Shift amount
+    // 2. addi x2, x0, 8          ; Value to shift
+    // 3. sll x3, x2, x1          ; 8 << 2 = 32
+    // 4. srl x4, x2, x1          ; 8 >> 2 = 2
+    // 5. addi x5, x0, -100       ; Negative value for arithmetic shift
+    // 6. sra x6, x5, x1          ; -100 >> 2 = -25
+    // 7. slli x7, x2, 3          ; 8 << 3 = 64
+    // 8. srli x8, x2, 1          ; 8 >> 1 = 4
+    // 9. srai x9, x5, 3          ; -100 >> 3 = -13
+    std::vector<uint32_t> program = {
+        0x00200093,
+        0x00800113,
+        0x001111B3,
+        0x00115233,
+        0xF9C00293,
+        0x4012D333,
+        0x00311393,
+        0x00115413,
+        0x4032D493
+    };
+    load_and_run(program);
+
+    ASSERT_EQ(cpu.get_reg(3), 32u);
+    ASSERT_EQ(cpu.get_reg(4), 2u);
+    ASSERT_EQ(cpu.get_reg(6), (uint32_t)-25);
+    ASSERT_EQ(cpu.get_reg(7), 64u);
+    ASSERT_EQ(cpu.get_reg(8), 4u);
+    ASSERT_EQ(cpu.get_reg(9), (uint32_t)-13);
+}
