@@ -165,3 +165,75 @@ TEST_F(InstructionTest, LoadStoreInstructions) {
     ASSERT_EQ(cpu.get_reg(4), 0x00005678u);
     ASSERT_EQ(cpu.get_reg(5), 0x00000078u);
 }
+
+TEST_F(InstructionTest, BranchInstructions) {
+    // 1. addi x1, x0, 10
+    // 2. addi x2, x0, 20
+    // 3. beq x1, x2, 8      ; Should NOT take branch (10 != 20)
+    // 4. addi x3, x0, 1     ; Should execute
+    // 5. beq x1, x1, 8      ; Should take branch (10 == 10)
+    // 6. addi x4, x0, 1     ; Should be skipped
+    // 7. addi x5, x0, 2     ; Target of second BEQ
+    // 8. blt x1, x2, 8      ; Should take branch (10 < 20)
+    // 9. addi x6, x0, 1     ; Should be skipped
+    // 10. addi x7, x0, 3    ; Target of BLT
+    std::vector<uint32_t> program = {
+        0x00a00093,
+        0x01400113,
+        0x00208463,
+        0x00100193,
+        0x00108463,
+        0x00100213,
+        0x00200293,
+        0x0020c463,
+        0x00100313,
+        0x00300393
+    };
+    // Run for a fixed number of steps since branches change flow
+    cpu.reset();
+    mem.load_program(program);
+    for (int i = 0; i < 10; ++i) {
+        if (cpu.fetch_pc() >= program.size() * 4) break; 
+        cpu.step();
+    }
+
+    ASSERT_EQ(cpu.get_reg(3), 1u); // x3 should be 1 (first BEQ not taken)
+    ASSERT_EQ(cpu.get_reg(4), 0u); // x4 should be 0 (second BEQ taken)
+    ASSERT_EQ(cpu.get_reg(5), 2u); // x5 should be 2 (target of second BEQ)
+    ASSERT_EQ(cpu.get_reg(6), 0u); // x6 should be 0 (BLT taken)
+    ASSERT_EQ(cpu.get_reg(7), 3u); // x7 should be 3 (target of BLT)
+}
+
+TEST_F(InstructionTest, JumpInstructions) {
+    // 1. jal x1, 8          ; Jump to PC+8, store return address (PC+4) in x1
+    // 2. addi x2, x0, 1     ; Should be skipped
+    // 3. addi x3, x0, 2     ; Target of JAL
+    // 4. jalr x4, x1, 0     ; Jump to address in x1 (which is PC of instruction 2)
+    // 5. addi x5, x0, 3     ; Target of JALR (since x1 points here)
+    std::vector<uint32_t> program = {
+        0x008000ef,
+        0x00100113,
+        0x00200193,
+        0x00008267,
+        0x00300293
+    };
+
+    cpu.reset();
+    mem.load_program(program);
+    // Step 1: JAL
+    cpu.step(); 
+    ASSERT_EQ(cpu.fetch_pc(), 8u); // Should be at instruction 3
+    ASSERT_EQ(cpu.get_reg(1), 4u); // Return address should be 4 (instruction 2)
+
+    // Step 2: Instruction 3 (ADDI x3, x0, 2)
+    cpu.step();
+    ASSERT_EQ(cpu.get_reg(3), 2u);
+
+    // Step 3: JALR (Jump to address in x1 = 4)
+    cpu.step();
+    ASSERT_EQ(cpu.fetch_pc(), 4u); // Should be at instruction 2
+
+    // Step 4: Instruction 2 (ADDI x2, x0, 1)
+    cpu.step();
+    ASSERT_EQ(cpu.get_reg(2), 1u);
+}
