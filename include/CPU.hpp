@@ -43,6 +43,16 @@ private:
         }
         return (int32_t)value;
     }
+
+    // Private helper methods for instruction execution
+    void execute_lui_auipc(uint8_t opcode, uint8_t rd, int32_t u_imm);
+    void execute_jal(uint8_t rd, int32_t j_imm);
+    void execute_jalr(uint8_t rd, uint8_t rs1, int32_t imm);
+    void execute_branch(uint8_t funct3, uint8_t rs1, uint8_t rs2, int32_t b_imm);
+    void execute_op_imm(uint8_t funct3, uint8_t rd, uint8_t rs1, int32_t imm, uint8_t funct7, uint8_t shamt);
+    void execute_load(uint8_t funct3, uint8_t rd, uint8_t rs1, int32_t imm);
+    void execute_store(uint8_t funct3, uint8_t rs1, uint8_t rs2, int32_t s_imm);
+    void execute_op(uint8_t funct3, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t funct7);
 };
 
 #endif // CPU_HPP
