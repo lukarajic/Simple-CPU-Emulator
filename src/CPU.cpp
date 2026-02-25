@@ -10,6 +10,7 @@ CPU::CPU(Memory& memory) : mem(memory) {
 void CPU::reset() {
     regs.fill(0);
     pc = 0;
+    csrs.clear();
 }
 
 uint32_t CPU::fetch() {
@@ -252,4 +253,12 @@ uint32_t CPU::get_reg(int reg_num) const {
         return 0;
     }
     return regs[reg_num];
+}
+
+uint32_t CPU::get_csr(uint32_t csr_addr) const {
+    auto it = csrs.find(csr_addr);
+    if (it != csrs.end()) {
+        return it->second;
+    }
+    return 0;
 }

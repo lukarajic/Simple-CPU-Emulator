@@ -3,12 +3,23 @@
 
 #include <cstdint>
 #include <array>
+#include <unordered_map>
 
 class Memory; // Forward declaration
 
 class CPU {
 public:
     CPU(Memory& memory);
+
+    // CSR Addresses (Machine Mode)
+    static constexpr uint32_t CSR_MSTATUS = 0x300;
+    static constexpr uint32_t CSR_MTVEC   = 0x305;
+    static constexpr uint32_t CSR_MEPC    = 0x341;
+    static constexpr uint32_t CSR_MCAUSE  = 0x342;
+    static constexpr uint32_t CSR_MTVAL   = 0x343;
+    static constexpr uint32_t CSR_MIE     = 0x304;
+    static constexpr uint32_t CSR_MIP     = 0x344;
+    static constexpr uint32_t CSR_MCYCLE  = 0xB00;
 
     // Reset the CPU state
     void reset();
@@ -28,6 +39,9 @@ public:
     // Get a specific register value
     uint32_t get_reg(int reg_num) const;
 
+    // Get a specific CSR value
+    uint32_t get_csr(uint32_t csr_addr) const;
+
     // Get current PC
     uint32_t fetch_pc() const { return pc; }
 
@@ -35,6 +49,7 @@ private:
     std::array<uint32_t, 32> regs; // x0-x31
     uint32_t pc;                   // Program Counter
     Memory& mem;                   // Reference to system memory
+    std::unordered_map<uint32_t, uint32_t> csrs; // Control and Status Registers
 
     // Helper: Sign-extend a value from a specific bit width to 32 bits
     int32_t sign_extend(uint32_t value, int bits) {
