@@ -258,3 +258,54 @@ TEST_F(InstructionTest, CSRInstructions) {
     ASSERT_EQ(cpu.get_reg(5), 13u);         // mstatus was 13 before CSRRC
     ASSERT_EQ(cpu.get_csr(CPU::CSR_MSTATUS), 8u); // Final mstatus is 8
 }
+
+TEST_F(InstructionTest, TrapAndEcall) {
+    // 1. addi x1, x0, 0x100     ; Load handler address into x1
+    // 2. csrrw x0, mtvec, x1  ; Set mtvec = x1
+    // 3. ecall
+    // 4. addi x1, x0, 1         ; Should be skipped by ecall, then executed after mret
+    //
+    // Trap handler at 0x100:
+    // 1. addi x2, x0, 1 (indicates handler was reached)
+    // 2. mret
+    std::vector<uint32_t> program = {
+        0x10000093, // addi x1, x0, 0x100
+        0x30509073, // csrrw x0, mtvec, x1
+        0x00000073, // ecall
+        0x00100093  // addi x1, x0, 1
+    };
+
+    // Manually assemble a simple handler
+    std::vector<uint32_t> handler_program = {
+        0x00100113, // addi x2, x0, 1
+        0x30200073  // mret
+    };
+
+    cpu.reset();
+    mem.load_program(program);
+    mem.load_program(handler_program, 0x100);
+
+    // Step 1: Set mtvec
+    cpu.step(); // addi
+    cpu.step(); // csrrw
+
+    // Step 2: Execute ecall
+    cpu.step();
+
+    // Now we should be in the handler
+    ASSERT_EQ(cpu.fetch_pc(), 0x100u);
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MEPC), 8u); // PC of the ecall instruction
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MCAUSE), CPU::CAUSE_ECALL_M_MODE);
+
+    // Step 3: Execute the handler's first instruction
+    cpu.step(); // addi x2, x0, 1
+    ASSERT_EQ(cpu.get_reg(2), 1u);
+
+    // Step 4: Execute mret
+    cpu.step();
+    ASSERT_EQ(cpu.fetch_pc(), 12u); // Should return to instruction after ecall
+
+    // Step 5: Execute instruction after trap
+    cpu.step();
+    ASSERT_EQ(cpu.get_reg(1), 1u); // x1 should now be 1
+}

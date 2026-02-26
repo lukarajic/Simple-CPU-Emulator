@@ -21,8 +21,14 @@ public:
     static constexpr uint32_t CSR_MIP     = 0x344;
     static constexpr uint32_t CSR_MCYCLE  = 0xB00;
 
+    // Exception Cause Codes
+    static constexpr uint32_t CAUSE_ECALL_M_MODE = 11;
+
     // Reset the CPU state
     void reset();
+
+    // Trigger a trap/exception
+    void trap(uint32_t cause, uint32_t tval = 0);
 
     // Fetch the next instruction from memory
     uint32_t fetch();

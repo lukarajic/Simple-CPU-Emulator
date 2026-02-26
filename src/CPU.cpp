@@ -67,6 +67,19 @@ void CPU::execute(uint32_t instr) {
     regs[0] = 0;
 }
 
+void CPU::trap(uint32_t cause, uint32_t tval) {
+    csrs[CSR_MCAUSE] = cause;
+    csrs[CSR_MEPC] = pc - 4; // PC of the instruction causing the trap
+    csrs[CSR_MTVAL] = tval;
+
+    // Get trap handler address from mtvec, default to 0 if not set
+    uint32_t trap_handler_addr = 0;
+    if (csrs.count(CSR_MTVEC)) {
+        trap_handler_addr = csrs[CSR_MTVEC];
+    }
+    pc = trap_handler_addr;
+}
+
 void CPU::execute_lui_auipc(uint8_t opcode, uint8_t rd, int32_t u_imm) {
     if (opcode == 0x37) { // LUI
         if (rd != 0) regs[rd] = u_imm;
@@ -241,6 +254,17 @@ void CPU::execute_op(uint8_t funct3, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8
 }
 
 void CPU::execute_system(uint8_t funct3, uint8_t rd, uint8_t rs1, uint32_t csr_addr) {
+    // Check for ECALL/MRET first as they don't follow the normal CSR instruction format
+    if (funct3 == 0x0) {
+        if (csr_addr == 0x0) { // ECALL
+            trap(CAUSE_ECALL_M_MODE);
+            return;
+        } else if (csr_addr == 0x302) { // MRET
+            pc = (csrs.count(CSR_MEPC) ? csrs[CSR_MEPC] : 0) + 4;
+            return;
+        }
+    }
+
     uint32_t t = 0;
     if (csrs.count(csr_addr)) {
         t = csrs[csr_addr];
