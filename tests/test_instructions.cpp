@@ -237,3 +237,24 @@ TEST_F(InstructionTest, JumpInstructions) {
     cpu.step();
     ASSERT_EQ(cpu.get_reg(2), 1u);
 }
+
+TEST_F(InstructionTest, CSRInstructions) {
+    // 1. addi x1, x0, 0x5
+    // 2. addi x2, x0, 0xC
+    // 3. csrrw x3, mstatus, x1  ; x3 = mstatus, mstatus = 5
+    // 4. csrrs x4, mstatus, x2  ; x4 = mstatus (5), mstatus = 5 | 12 = 13
+    // 5. csrrc x5, mstatus, x1  ; x5 = mstatus (13), mstatus = 13 & ~5 = 8
+    std::vector<uint32_t> program = {
+        0x00500093,
+        0x00C00113,
+        0x300091F3, // CSRRW: csr=mstatus(0x300), rd=x3, rs1=x1
+        0x30012273, // CSRRS: csr=mstatus(0x300), rd=x4, rs1=x2
+        0x3000B2F3  // CSRRC: csr=mstatus(0x300), rd=x5, rs1=x1
+    };
+    load_and_run(program);
+
+    ASSERT_EQ(cpu.get_reg(3), 0u);          // Initial mstatus was 0
+    ASSERT_EQ(cpu.get_reg(4), 5u);          // mstatus was 5 before CSRRS
+    ASSERT_EQ(cpu.get_reg(5), 13u);         // mstatus was 13 before CSRRC
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MSTATUS), 8u); // Final mstatus is 8
+}

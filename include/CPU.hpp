@@ -68,6 +68,7 @@ private:
     void execute_load(uint8_t funct3, uint8_t rd, uint8_t rs1, int32_t imm);
     void execute_store(uint8_t funct3, uint8_t rs1, uint8_t rs2, int32_t s_imm);
     void execute_op(uint8_t funct3, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t funct7);
+    void execute_system(uint8_t funct3, uint8_t rd, uint8_t rs1, uint32_t csr_addr);
 };
 
 #endif // CPU_HPP

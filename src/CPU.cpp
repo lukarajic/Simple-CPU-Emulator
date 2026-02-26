@@ -56,6 +56,9 @@ void CPU::execute(uint32_t instr) {
         execute_store(funct3, rs1, rs2, s_imm);
     } else if (opcode == 0x33) { // OP (R-type)
         execute_op(funct3, rd, rs1, rs2, funct7);
+    } else if (opcode == 0x73) { // SYSTEM
+        uint32_t csr_addr = (instr >> 20);
+        execute_system(funct3, rd, rs1, csr_addr);
     } else {
         std::cerr << "Unknown opcode: 0x" << std::hex << (int)opcode << std::endl;
     }
@@ -234,6 +237,51 @@ void CPU::execute_op(uint8_t funct3, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8
         default:
             std::cerr << "Unknown funct3 for OP: 0x" << std::hex << (int)funct3 << std::endl;
             break;
+    }
+}
+
+void CPU::execute_system(uint8_t funct3, uint8_t rd, uint8_t rs1, uint32_t csr_addr) {
+    uint32_t t = 0;
+    if (csrs.count(csr_addr)) {
+        t = csrs[csr_addr];
+    }
+
+    uint32_t write_val = 0;
+    
+    switch (funct3) {
+        case 0x1: // CSRRW
+            write_val = regs[rs1];
+            if (rd != 0) regs[rd] = t;
+            csrs[csr_addr] = write_val;
+            break;
+        case 0x2: // CSRRS
+            write_val = t | regs[rs1];
+            if (rd != 0) regs[rd] = t;
+            csrs[csr_addr] = write_val;
+            break;
+        case 0x3: // CSRRC
+            write_val = t & ~regs[rs1];
+            if (rd != 0) regs[rd] = t;
+            csrs[csr_addr] = write_val;
+            break;
+        case 0x5: // CSRRWI
+            write_val = rs1; // Zero-extended immediate
+            if (rd != 0) regs[rd] = t;
+            csrs[csr_addr] = write_val;
+            break;
+        case 0x6: // CSRRSI
+            write_val = t | rs1;
+            if (rd != 0) regs[rd] = t;
+            csrs[csr_addr] = write_val;
+            break;
+        case 0x7: // CSRRCI
+            write_val = t & ~rs1;
+            if (rd != 0) regs[rd] = t;
+            csrs[csr_addr] = write_val;
+            break;
+        default:
+             std::cerr << "Unknown funct3 for SYSTEM: 0x" << std::hex << (int)funct3 << std::endl;
+             break;
     }
 }
 
