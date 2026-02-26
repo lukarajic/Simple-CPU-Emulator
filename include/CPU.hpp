@@ -3,78 +3,97 @@
 
 #include <cstdint>
 #include <array>
+#include <vector>
 #include <unordered_map>
+#include <string>
 
 class Memory; // Forward declaration
+
+// Control signals for the pipeline
+struct ControlUnit {
+    bool reg_write = false;
+    bool mem_read = false;
+    bool mem_write = false;
+    bool branch = false;
+    bool jump = false;
+    uint8_t alu_op = 0; // 0:ADD, 1:SUB, 2:AND, 3:OR, 4:XOR, 5:SLT, 6:SLTU, 7:SLL, 8:SRL, 9:SRA
+    bool alu_src = false; // false: reg, true: immediate
+};
+
+// Pipeline Registers
+struct IF_ID_Reg {
+    uint32_t instruction = 0;
+    uint32_t pc = 0;
+};
+
+struct ID_EX_Reg {
+    uint32_t pc = 0;
+    uint32_t reg_val1 = 0;
+    uint32_t reg_val2 = 0;
+    int32_t imm = 0;
+    uint8_t rs1 = 0;
+    uint8_t rs2 = 0;
+    uint8_t rd = 0;
+    ControlUnit controls;
+};
+
+struct EX_MEM_Reg {
+    uint32_t alu_result = 0;
+    uint32_t reg_val2 = 0; // Value to store
+    uint8_t rd = 0;
+    ControlUnit controls;
+};
+
+struct MEM_WB_Reg {
+    uint32_t mem_data = 0;
+    uint32_t alu_result = 0;
+    uint8_t rd = 0;
+    ControlUnit controls;
+};
 
 class CPU {
 public:
     CPU(Memory& memory);
 
-    // CSR Addresses (Machine Mode)
-    static constexpr uint32_t CSR_MSTATUS = 0x300;
-    static constexpr uint32_t CSR_MTVEC   = 0x305;
-    static constexpr uint32_t CSR_MEPC    = 0x341;
-    static constexpr uint32_t CSR_MCAUSE  = 0x342;
-    static constexpr uint32_t CSR_MTVAL   = 0x343;
-    static constexpr uint32_t CSR_MIE     = 0x304;
-    static constexpr uint32_t CSR_MIP     = 0x344;
-    static constexpr uint32_t CSR_MCYCLE  = 0xB00;
+    // CSR Addresses
+    static constexpr uint32_t CSR_MSTATUS = 0x300, CSR_MTVEC = 0x305, CSR_MEPC = 0x341;
+    static constexpr uint32_t CSR_MCAUSE = 0x342, CSR_MTVAL = 0x343, CSR_MIE = 0x304;
+    static constexpr uint32_t CSR_MIP = 0x344, CSR_MCYCLE = 0xB00;
 
-    // Exception Cause Codes
+    // Exception Causes
     static constexpr uint32_t CAUSE_ECALL_M_MODE = 11;
 
-    // Reset the CPU state
     void reset();
+    void clock(); // Main method to advance the pipeline by one cycle
 
-    // Trigger a trap/exception
-    void trap(uint32_t cause, uint32_t tval = 0);
-
-    // Fetch the next instruction from memory
-    uint32_t fetch();
-
-    // Execute a single instruction cycle (Fetch + Execute)
-    void step();
-
-    // Execute a specific instruction
-    void execute(uint32_t instr);
-
-    // Debug: Print register contents
+    // Debugging and Testing
     void dump_registers() const;
-
-    // Get a specific register value
     uint32_t get_reg(int reg_num) const;
-
-    // Get a specific CSR value
     uint32_t get_csr(uint32_t csr_addr) const;
-
-    // Get current PC
     uint32_t fetch_pc() const { return pc; }
 
 private:
-    std::array<uint32_t, 32> regs; // x0-x31
-    uint32_t pc;                   // Program Counter
-    Memory& mem;                   // Reference to system memory
-    std::unordered_map<uint32_t, uint32_t> csrs; // Control and Status Registers
+    std::array<uint32_t, 32> regs;
+    uint32_t pc;
+    Memory& mem;
+    std::unordered_map<uint32_t, uint32_t> csrs;
 
-    // Helper: Sign-extend a value from a specific bit width to 32 bits
-    int32_t sign_extend(uint32_t value, int bits) {
-        if (value & (1 << (bits - 1))) {
-            return (int32_t)(value | (0xFFFFFFFF << bits));
-        }
-        return (int32_t)value;
-    }
+    // Pipeline registers
+    IF_ID_Reg if_id_reg;
+    ID_EX_Reg id_ex_reg;
+    EX_MEM_Reg ex_mem_reg;
+    MEM_WB_Reg mem_wb_reg;
 
-    // Private helper methods for instruction execution
-    void execute_lui_auipc(uint8_t opcode, uint8_t rd, int32_t u_imm);
-    void execute_jal(uint8_t rd, int32_t j_imm);
-    void execute_jalr(uint8_t rd, uint8_t rs1, int32_t imm);
-    void execute_branch(uint8_t funct3, uint8_t rs1, uint8_t rs2, int32_t b_imm);
-    void execute_op_imm(uint8_t funct3, uint8_t rd, uint8_t rs1, int32_t imm, uint8_t funct7, uint8_t shamt);
-    void execute_load(uint8_t funct3, uint8_t rd, uint8_t rs1, int32_t imm);
-    void execute_store(uint8_t funct3, uint8_t rs1, uint8_t rs2, int32_t s_imm);
-    void execute_op(uint8_t funct3, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t funct7);
-    void execute_system(uint8_t funct3, uint8_t rd, uint8_t rs1, uint32_t csr_addr);
+    // Pipeline stage methods
+    void if_stage();
+    void id_stage();
+    void ex_stage();
+    void mem_stage();
+    void wb_stage();
+
+    // Private helpers
+    void trap(uint32_t cause, uint32_t tval = 0);
+    int32_t sign_extend(uint32_t value, int bits);
 };
 
 #endif // CPU_HPP
