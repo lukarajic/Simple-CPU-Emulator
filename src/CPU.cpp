@@ -38,46 +38,115 @@ void CPU::id_stage() {
 
     uint8_t opcode = instr & 0x7F;
     id_ex_reg.rd = (instr >> 7) & 0x1F;
-    // uint8_t funct3 = (instr >> 12) & 0x07; // Will be used for more detailed control signals
+    uint8_t funct3 = (instr >> 12) & 0x07;
     id_ex_reg.rs1 = (instr >> 15) & 0x1F;
     id_ex_reg.rs2 = (instr >> 20) & 0x1F;
-    // uint8_t funct7 = (instr >> 25) & 0x7F; // Will be used for more detailed control signals
+    uint8_t funct7 = (instr >> 25) & 0x7F;
 
     id_ex_reg.reg_val1 = regs[id_ex_reg.rs1];
     id_ex_reg.reg_val2 = regs[id_ex_reg.rs2];
 
-    // Default all controls to off
-    id_ex_reg.controls = {};
+    id_ex_reg.controls = {}; // Default: all false/0
+    id_ex_reg.controls.funct3 = funct3;
+    id_ex_reg.controls.funct7 = funct7;
 
-    // TODO: This is where a large part of the control logic will go
-    // For now, we'll just decode a few instruction types naively.
     switch (opcode) {
-        case 0x33: // R-type
+        case 0x37: // LUI
             id_ex_reg.controls.reg_write = true;
+            id_ex_reg.imm = (instr & 0xFFFFF000);
+            id_ex_reg.controls.alu_op = 0;
             break;
-        case 0x13: // I-type
+        case 0x17: // AUIPC
             id_ex_reg.controls.reg_write = true;
-            id_ex_reg.controls.alu_src = true; // Use immediate
+            id_ex_reg.imm = (instr & 0xFFFFF000);
+            id_ex_reg.controls.alu_op = 1;
+            break;
+        case 0x6F: // JAL
+            id_ex_reg.controls.reg_write = true;
+            id_ex_reg.controls.jump = true;
+            id_ex_reg.imm = sign_extend(((instr >> 31) << 20) | (((instr >> 12) & 0xFF) << 12) | (((instr >> 20) & 0x1) << 11) | (((instr >> 21) & 0x3FF) << 1), 21);
+            id_ex_reg.controls.alu_op = 2;
+            break;
+        case 0x67: // JALR
+            id_ex_reg.controls.reg_write = true;
+            id_ex_reg.controls.jump = true;
+            id_ex_reg.controls.alu_src = true;
             id_ex_reg.imm = sign_extend((instr >> 20) & 0xFFF, 12);
+            id_ex_reg.controls.alu_op = 3;
             break;
-        case 0x03: // Load
+        case 0x63: // BRANCH
+            id_ex_reg.controls.branch = true;
+            id_ex_reg.imm = sign_extend(((instr >> 31) << 12) | (((instr >> 7) & 0x1) << 11) | (((instr >> 25) & 0x3F) << 5) | (((instr >> 8) & 0xF) << 1), 13);
+            id_ex_reg.controls.alu_op = 4;
+            break;
+        case 0x03: // LOAD
             id_ex_reg.controls.reg_write = true;
             id_ex_reg.controls.mem_read = true;
-            id_ex_reg.controls.alu_src = true; // Use immediate for address calculation
+            id_ex_reg.controls.alu_src = true;
             id_ex_reg.imm = sign_extend((instr >> 20) & 0xFFF, 12);
+            id_ex_reg.controls.alu_op = 5;
             break;
-        // Other opcodes will be added here
+        case 0x23: // STORE
+            id_ex_reg.controls.mem_write = true;
+            id_ex_reg.controls.alu_src = true;
+            id_ex_reg.imm = sign_extend(((instr >> 25) << 5) | ((instr >> 7) & 0x1F), 12);
+            id_ex_reg.controls.alu_op = 6;
+            break;
+        case 0x13: // OP-IMM
+            id_ex_reg.controls.reg_write = true;
+            id_ex_reg.controls.alu_src = true;
+            id_ex_reg.imm = sign_extend((instr >> 20) & 0xFFF, 12);
+            id_ex_reg.controls.alu_op = 7;
+            break;
+        case 0x33: // OP
+            id_ex_reg.controls.reg_write = true;
+            id_ex_reg.controls.alu_op = 8;
+            break;
+        default:
+            // Placeholder for unknown or system opcodes
+            break;
     }
 }
 
 void CPU::ex_stage() {
-    uint32_t operand1 = id_ex_reg.reg_val1;
-    uint32_t operand2 = id_ex_reg.controls.alu_src ? id_ex_reg.imm : id_ex_reg.reg_val2;
-    
-    // Simple ALU for now, just does addition
-    ex_mem_reg.alu_result = operand1 + operand2;
-    
-    ex_mem_reg.reg_val2 = id_ex_reg.reg_val2; // Forward value for stores
+    uint32_t op1 = id_ex_reg.reg_val1;
+    uint32_t op2 = id_ex_reg.controls.alu_src ? id_ex_reg.imm : id_ex_reg.reg_val2;
+    uint32_t result = 0;
+
+    uint8_t alu_op = id_ex_reg.controls.alu_op;
+    uint8_t funct3 = id_ex_reg.controls.funct3;
+    uint8_t funct7 = id_ex_reg.controls.funct7;
+
+    if (alu_op == 0) { // LUI
+        result = id_ex_reg.imm;
+    } else if (alu_op == 1) { // AUIPC
+        result = id_ex_reg.pc + id_ex_reg.imm;
+    } else if (alu_op == 2 || alu_op == 3) { // JAL, JALR
+        result = id_ex_reg.pc + 4; // Return address
+        // Hazard handling will be needed here for PC updates
+    } else if (alu_op == 7 || alu_op == 8) { // OP-IMM or OP
+        switch (funct3) {
+            case 0x0: // ADD / SUB
+                if (alu_op == 8 && funct7 == 0x20) result = op1 - op2;
+                else result = op1 + op2;
+                break;
+            case 0x1: result = op1 << (op2 & 0x1F); break; // SLL
+            case 0x2: result = ((int32_t)op1 < (int32_t)op2) ? 1 : 0; break; // SLT
+            case 0x3: result = (op1 < op2) ? 1 : 0; break; // SLTU
+            case 0x4: result = op1 ^ op2; break; // XOR
+            case 0x5: // SRL / SRA
+                if (funct7 == 0x20) result = (int32_t)op1 >> (op2 & 0x1F);
+                else result = op1 >> (op2 & 0x1F);
+                break;
+            case 0x6: result = op1 | op2; break; // OR
+            case 0x7: result = op1 & op2; break; // AND
+        }
+    } else if (alu_op == 5 || alu_op == 6) { // LOAD or STORE
+        result = op1 + op2; // Address calculation
+    }
+
+    ex_mem_reg.alu_result = result;
+    ex_mem_reg.reg_val2 = id_ex_reg.reg_val2;
     ex_mem_reg.rd = id_ex_reg.rd;
     ex_mem_reg.controls = id_ex_reg.controls;
 }
@@ -87,11 +156,24 @@ void CPU::mem_stage() {
     mem_wb_reg.rd = ex_mem_reg.rd;
     mem_wb_reg.alu_result = ex_mem_reg.alu_result;
 
+    uint8_t funct3 = ex_mem_reg.controls.funct3;
+    uint32_t addr = ex_mem_reg.alu_result;
+
     if (ex_mem_reg.controls.mem_read) {
-        mem_wb_reg.mem_data = mem.read32(ex_mem_reg.alu_result);
+        switch (funct3) {
+            case 0x0: mem_wb_reg.mem_data = sign_extend(mem.read8(addr), 8); break;   // LB
+            case 0x1: mem_wb_reg.mem_data = sign_extend(mem.read16(addr), 16); break; // LH
+            case 0x2: mem_wb_reg.mem_data = mem.read32(addr); break;                 // LW
+            case 0x4: mem_wb_reg.mem_data = mem.read8(addr); break;                  // LBU
+            case 0x5: mem_wb_reg.mem_data = mem.read16(addr); break;                 // LHU
+        }
     }
     if (ex_mem_reg.controls.mem_write) {
-        mem.write32(ex_mem_reg.alu_result, ex_mem_reg.reg_val2);
+        switch (funct3) {
+            case 0x0: mem.write8(addr, ex_mem_reg.reg_val2 & 0xFF); break;    // SB
+            case 0x1: mem.write16(addr, ex_mem_reg.reg_val2 & 0xFFFF); break; // SH
+            case 0x2: mem.write32(addr, ex_mem_reg.reg_val2); break;          // SW
+        }
     }
 }
 

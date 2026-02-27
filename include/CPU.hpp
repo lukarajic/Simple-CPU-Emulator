@@ -16,7 +16,9 @@ struct ControlUnit {
     bool mem_write = false;
     bool branch = false;
     bool jump = false;
-    uint8_t alu_op = 0; // 0:ADD, 1:SUB, 2:AND, 3:OR, 4:XOR, 5:SLT, 6:SLTU, 7:SLL, 8:SRL, 9:SRA
+    uint8_t alu_op = 0; // Opcode group: 0:LUI, 1:AUIPC, 2:JAL, 3:JALR, 4:BRANCH, 5:LOAD, 6:STORE, 7:OP-IMM, 8:OP
+    uint8_t funct3 = 0;
+    uint8_t funct7 = 0;
     bool alu_src = false; // false: reg, true: immediate
 };
 
