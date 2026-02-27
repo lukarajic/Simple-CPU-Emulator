@@ -80,6 +80,8 @@ private:
     Memory& mem;
     std::unordered_map<uint32_t, uint32_t> csrs;
 
+    bool stall = false;
+
     // Pipeline registers
     IF_ID_Reg if_id_reg;
     ID_EX_Reg id_ex_reg;
