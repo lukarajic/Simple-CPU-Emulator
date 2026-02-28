@@ -167,19 +167,59 @@ TEST_F(InstructionTest, LoadStoreInstructions) {
     ASSERT_EQ(cpu.get_reg(5), 0x00000078u);
 }
 
-// Note: All tests are temporarily commented out as the naive pipeline
-// implementation does not handle hazards and will cause them to fail.
-// Making these tests pass will be the goal of the next few commits.
-
-/*
 TEST_F(InstructionTest, BranchInstructions) {
-    // ...
+    // ... (instructions remain same)
+    std::vector<uint32_t> program = {
+        0x00a00093,
+        0x01400113,
+        0x00208463,
+        0x00100193,
+        0x00108463,
+        0x00100213,
+        0x00200293,
+        0x0020c463,
+        0x00100313,
+        0x00300393
+    };
+    cpu.reset();
+    mem.load_program(program);
+    // Run for a generous number of cycles to allow pipeline to drain
+    for (int i = 0; i < 50; ++i) {
+        cpu.clock();
+    }
+
+    ASSERT_EQ(cpu.get_reg(3), 1u); // x3 should be 1 (first BEQ not taken)
+    ASSERT_EQ(cpu.get_reg(4), 0u); // x4 should be 0 (second BEQ taken)
+    ASSERT_EQ(cpu.get_reg(5), 2u); // x5 should be 2 (target of second BEQ)
+    ASSERT_EQ(cpu.get_reg(6), 0u); // x6 should be 0 (BLT taken)
+    ASSERT_EQ(cpu.get_reg(7), 3u); // x7 should be 3 (target of BLT)
 }
 
 TEST_F(InstructionTest, JumpInstructions) {
-    // ...
+    // ... (instructions remain same)
+    std::vector<uint32_t> program = {
+        0x008000ef,
+        0x00100113,
+        0x00200193,
+        0x00008267,
+        0x00300293
+    };
+
+    cpu.reset();
+    mem.load_program(program);
+    
+    // Run for a generous number of cycles to allow pipeline to drain
+    for (int i = 0; i < 30; ++i) {
+        cpu.clock();
+    }
+
+    ASSERT_EQ(cpu.get_reg(1), 4u); // Return address of JAL
+    ASSERT_EQ(cpu.get_reg(3), 2u); // Instruction at PC=8
+    ASSERT_EQ(cpu.get_reg(2), 1u); // Instruction at PC=4 (returned by JALR)
 }
 
+// Note: CSR tests are temporarily commented out as they need to be integrated into the pipeline
+/*
 TEST_F(InstructionTest, CSRInstructions) {
     // ...
 }

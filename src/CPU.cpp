@@ -101,6 +101,32 @@ void CPU::clock() {
     next_ex_mem.rd = id_ex_reg.rd;
     next_ex_mem.controls = id_ex_reg.controls;
 
+    // --- Control Hazard Handling (Branch/Jump) ---
+    flush = false;
+    if (id_ex_reg.controls.jump) {
+        flush = true;
+        if (id_ex_reg.controls.alu_op == 2) { // JAL
+            next_pc = id_ex_reg.pc + id_ex_reg.imm;
+        } else { // JALR
+            next_pc = (op1 + id_ex_reg.imm) & ~1;
+        }
+    } else if (id_ex_reg.controls.branch) {
+        bool take_branch = false;
+        uint8_t f3 = id_ex_reg.controls.funct3;
+        switch (f3) {
+            case 0x0: take_branch = (op1 == op2); break; // BEQ
+            case 0x1: take_branch = (op1 != op2); break; // BNE
+            case 0x4: take_branch = ((int32_t)op1 < (int32_t)op2); break; // BLT
+            case 0x5: take_branch = ((int32_t)op1 >= (int32_t)op2); break; // BGE
+            case 0x6: take_branch = (op1 < op2); break; // BLTU
+            case 0x7: take_branch = (op1 >= op2); break; // BGEU
+        }
+        if (take_branch) {
+            flush = true;
+            next_pc = id_ex_reg.pc + id_ex_reg.imm;
+        }
+    }
+
     // --- ID Stage ---
     uint32_t instr = if_id_reg.instruction;
     uint8_t rs1 = (instr >> 15) & 0x1F;
@@ -139,19 +165,27 @@ void CPU::clock() {
     }
 
     // --- IF Stage ---
+    uint32_t sequential_pc = pc;
     if (!stall) {
         next_if_id.instruction = mem.read32(pc);
         next_if_id.pc = pc;
-        next_pc = pc + 4;
+        sequential_pc = pc + 4;
     }
 
-    // Update pipeline registers for next cycle
+    // --- Finalize Clock Cycle ---
+    if (flush) {
+        pc = next_pc;
+        next_if_id = {};
+        next_id_ex = {};
+    } else {
+        pc = sequential_pc;
+    }
+
     if_id_reg = next_if_id;
     id_ex_reg = next_id_ex;
     ex_mem_reg = next_ex_mem;
     mem_wb_reg = next_mem_wb;
-    pc = next_pc;
-    regs[0] = 0; // Always ensure x0 is 0
+    regs[0] = 0;
 }
 
 // Remove old stage methods as they are now integrated into clock()
