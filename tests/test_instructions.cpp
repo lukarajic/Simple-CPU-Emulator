@@ -218,13 +218,66 @@ TEST_F(InstructionTest, JumpInstructions) {
     ASSERT_EQ(cpu.get_reg(2), 1u); // Instruction at PC=4 (returned by JALR)
 }
 
-// Note: CSR tests are temporarily commented out as they need to be integrated into the pipeline
-/*
 TEST_F(InstructionTest, CSRInstructions) {
-    // ...
+    // 1. addi x1, x0, 0x5
+    // 2. addi x2, x0, 0xC
+    // 3. csrrw x3, mstatus, x1  ; x3 = mstatus, mstatus = 5
+    // 4. csrrs x4, mstatus, x2  ; x4 = mstatus (5), mstatus = 5 | 12 = 13
+    // 5. csrrc x5, mstatus, x1  ; x5 = mstatus (13), mstatus = 13 & ~5 = 8
+    std::vector<uint32_t> program = {
+        0x00500093,
+        0x00C00113,
+        0x300091F3, // CSRRW: csr=mstatus(0x300), rd=x3, rs1=x1
+        0x30012273, // CSRRS: csr=mstatus(0x300), rd=x4, rs1=x2
+        0x3000B2F3  // CSRRC: csr=mstatus(0x300), rd=x5, rs1=x1
+    };
+    load_and_run(program);
+
+    ASSERT_EQ(cpu.get_reg(3), 0u);          // Initial mstatus was 0
+    ASSERT_EQ(cpu.get_reg(4), 5u);          // mstatus was 5 before CSRRS
+    ASSERT_EQ(cpu.get_reg(5), 13u);         // mstatus was 13 before CSRRC
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MSTATUS), 8u); // Final mstatus is 8
 }
 
 TEST_F(InstructionTest, TrapAndEcall) {
-    // ...
+    // 1. addi x1, x0, 0x100     ; Load handler address into x1
+    // 2. csrrw x0, mtvec, x1  ; Set mtvec = x1
+    // 3. ecall
+    // 4. addi x1, x0, 1         ; Should be skipped by ecall, then executed after mret
+    //
+    // Trap handler at 0x100:
+    // 1. addi x2, x0, 1 (indicates handler was reached)
+    // 2. csrrw x10, mepc, x0 (read mepc to x10)
+    // 3. addi x10, x10, 4    (increment mepc)
+    // 4. csrrw x0, mepc, x10 (write back mepc)
+    // 5. mret
+    std::vector<uint32_t> program = {
+        0x10000093, // addi x1, x0, 0x100
+        0x30509073, // csrrw x0, mtvec, x1
+        0x00000073, // ecall
+        0x00100093  // addi x1, x0, 1
+    };
+
+    std::vector<uint32_t> handler_program = {
+        0x00100113, // addi x2, x0, 1
+        0x34101573, // csrrw x10, mepc, x0
+        0x00450513, // addi x10, x10, 4
+        0x34151073, // csrrw x0, mepc, x10
+        0x30200073  // mret
+    };
+
+    cpu.reset();
+    mem.load_program(program);
+    mem.load_program(handler_program, 0x100);
+
+    // Run for enough cycles to cover the whole process
+    for (int i = 0; i < 30; ++i) {
+        cpu.clock();
+    }
+
+    // mepc should be 12 because our handler incremented it from 8 to 12
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MEPC), 12u); 
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MCAUSE), CPU::CAUSE_ECALL_M_MODE);
+    ASSERT_EQ(cpu.get_reg(2), 1u); // x2 set in handler
+    ASSERT_EQ(cpu.get_reg(1), 1u); // x1 set after mret
 }
-*/

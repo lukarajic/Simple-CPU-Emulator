@@ -101,7 +101,7 @@ void CPU::clock() {
     next_ex_mem.rd = id_ex_reg.rd;
     next_ex_mem.controls = id_ex_reg.controls;
 
-    // --- Control Hazard Handling (Branch/Jump) ---
+    // --- Control Hazard Handling (Branch/Jump/System) ---
     flush = false;
     if (id_ex_reg.controls.jump) {
         flush = true;
@@ -124,6 +124,28 @@ void CPU::clock() {
         if (take_branch) {
             flush = true;
             next_pc = id_ex_reg.pc + id_ex_reg.imm;
+        }
+    } else if (id_ex_reg.controls.alu_op == 9) { // SYSTEM
+        uint32_t csr_addr = id_ex_reg.imm;
+        uint8_t f3 = id_ex_reg.controls.funct3;
+        if (f3 == 0) { // ECALL or MRET
+            if (csr_addr == 0x0) { // ECALL
+                trap(CAUSE_ECALL_M_MODE, id_ex_reg.pc);
+                flush = true;
+                next_pc = pc; // trap() updated pc
+            } else if (csr_addr == 0x302) { // MRET
+                next_pc = csrs.count(CSR_MEPC) ? csrs[CSR_MEPC] : 0;
+                flush = true;
+            }
+        } else { // CSR Instructions
+            uint32_t t = csrs.count(csr_addr) ? csrs[csr_addr] : 0;
+            if (id_ex_reg.rd != 0) next_ex_mem.alu_result = t; // Return old value
+            if (f3 == 1) csrs[csr_addr] = op1;      // CSRRW
+            else if (f3 == 2) csrs[csr_addr] = t | op1;  // CSRRS
+            else if (f3 == 3) csrs[csr_addr] = t & ~op1; // CSRRC
+            else if (f3 == 5) csrs[csr_addr] = id_ex_reg.rs1;      // CSRRWI
+            else if (f3 == 6) csrs[csr_addr] = t | id_ex_reg.rs1;  // CSRRSI
+            else if (f3 == 7) csrs[csr_addr] = t & ~id_ex_reg.rs1; // CSRRCI
         }
     }
 
@@ -161,6 +183,11 @@ void CPU::clock() {
             case 0x23: next_id_ex.controls.mem_write = true; next_id_ex.controls.alu_src = true; next_id_ex.imm = sign_extend(((instr >> 25) << 5) | ((instr >> 7) & 0x1F), 12); next_id_ex.controls.alu_op = 6; break;
             case 0x13: next_id_ex.controls.reg_write = true; next_id_ex.controls.alu_src = true; next_id_ex.imm = sign_extend((instr >> 20) & 0xFFF, 12); next_id_ex.controls.alu_op = 7; break;
             case 0x33: next_id_ex.controls.reg_write = true; next_id_ex.controls.alu_op = 8; break;
+            case 0x73: // SYSTEM
+                next_id_ex.controls.reg_write = true;
+                next_id_ex.controls.alu_op = 9;
+                next_id_ex.imm = (instr >> 20); // CSR address
+                break;
         }
     }
 
@@ -197,9 +224,9 @@ void CPU::wb_stage() {}
 
 // --- Other Methods (unchanged for now, but execute_* are gone) ---
 
-void CPU::trap(uint32_t cause, uint32_t tval) {
+void CPU::trap(uint32_t cause, uint32_t trap_pc, uint32_t tval) {
     csrs[CSR_MCAUSE] = cause;
-    csrs[CSR_MEPC] = pc - 4;
+    csrs[CSR_MEPC] = trap_pc;
     csrs[CSR_MTVAL] = tval;
     pc = csrs.count(CSR_MTVEC) ? csrs[CSR_MTVEC] : 0;
 }

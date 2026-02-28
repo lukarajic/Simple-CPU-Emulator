@@ -97,7 +97,7 @@ private:
     void wb_stage();
 
     // Private helpers
-    void trap(uint32_t cause, uint32_t tval = 0);
+    void trap(uint32_t cause, uint32_t trap_pc, uint32_t tval = 0);
     int32_t sign_extend(uint32_t value, int bits);
 };
 
