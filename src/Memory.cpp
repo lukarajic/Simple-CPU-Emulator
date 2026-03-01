@@ -7,6 +7,7 @@ Memory::Memory(uint32_t size) {
 }
 
 uint32_t Memory::read32(uint32_t address) const {
+    if (address == UART_BASE) return 0;
     if (address + 3 >= mem.size()) {
         std::cerr << "Memory read out of bounds at 0x" << std::hex << address << std::endl;
         return 0;
@@ -19,6 +20,7 @@ uint32_t Memory::read32(uint32_t address) const {
 }
 
 uint16_t Memory::read16(uint32_t address) const {
+    if (address == UART_BASE) return 0;
     if (address + 1 >= mem.size()) {
         std::cerr << "Memory read16 out of bounds at 0x" << std::hex << address << std::endl;
         return 0;
@@ -29,6 +31,7 @@ uint16_t Memory::read16(uint32_t address) const {
 }
 
 uint8_t Memory::read8(uint32_t address) const {
+    if (address == UART_BASE) return 0;
     if (address >= mem.size()) {
         std::cerr << "Memory read8 out of bounds at 0x" << std::hex << address << std::endl;
         return 0;
@@ -37,6 +40,10 @@ uint8_t Memory::read8(uint32_t address) const {
 }
 
 void Memory::write32(uint32_t address, uint32_t value) {
+    if (address == UART_BASE) {
+        std::cout << (char)(value & 0xFF) << std::flush;
+        return;
+    }
     if (address + 3 >= mem.size()) {
         std::cerr << "Memory write out of bounds at 0x" << std::hex << address << std::endl;
         return;
@@ -49,6 +56,10 @@ void Memory::write32(uint32_t address, uint32_t value) {
 }
 
 void Memory::write16(uint32_t address, uint16_t value) {
+    if (address == UART_BASE) {
+        std::cout << (char)(value & 0xFF) << std::flush;
+        return;
+    }
     if (address + 1 >= mem.size()) {
         std::cerr << "Memory write16 out of bounds at 0x" << std::hex << address << std::endl;
         return;
@@ -59,6 +70,10 @@ void Memory::write16(uint32_t address, uint16_t value) {
 }
 
 void Memory::write8(uint32_t address, uint8_t value) {
+    if (address == UART_BASE) {
+        std::cout << (char)value << std::flush;
+        return;
+    }
     if (address >= mem.size()) {
         std::cerr << "Memory write8 out of bounds at 0x" << std::hex << address << std::endl;
         return;

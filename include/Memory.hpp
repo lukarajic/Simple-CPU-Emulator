@@ -6,6 +6,10 @@
 
 class Memory {
 public:
+    // UART MMIO Address
+    static constexpr uint32_t UART_BASE = 0x10000000;
+    static constexpr uint32_t UART_THR  = 0x00; // Transmitter Holding Register
+
     // Initialize memory with a specific size (default 1MB)
     Memory(uint32_t size = 1024 * 1024);
 
