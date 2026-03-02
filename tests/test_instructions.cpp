@@ -316,3 +316,27 @@ TEST_F(InstructionTest, UARTPrint) {
 
     SUCCEED(); // If it didn't crash and outputted correctly, it's a success
 }
+
+TEST_F(InstructionTest, PerformanceCounters) {
+    // 1. addi x1, x0, 10
+    // 2. addi x2, x0, 20
+    // 3. add x3, x1, x2
+    std::vector<uint32_t> program = {
+        0x00a00093,
+        0x01400113,
+        0x002081b3
+    };
+
+    cpu.reset();
+    mem.load_program(program);
+    
+    // Run for exactly program.size() + 4 cycles to retire all instructions
+    for (size_t i = 0; i < program.size() + 4; ++i) {
+        cpu.clock();
+    }
+
+    // minstret should be 3 (3 instructions retired)
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MINSTRET), 3u);
+    // mcycle should be 7 (3 + 4 cycles)
+    ASSERT_EQ(cpu.get_csr(CPU::CSR_MCYCLE), 7u);
+}

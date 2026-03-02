@@ -26,6 +26,7 @@ struct ControlUnit {
 struct IF_ID_Reg {
     uint32_t instruction = 0;
     uint32_t pc = 0;
+    bool valid = false;
 };
 
 struct ID_EX_Reg {
@@ -37,6 +38,7 @@ struct ID_EX_Reg {
     uint8_t rs2 = 0;
     uint8_t rd = 0;
     ControlUnit controls;
+    bool valid = false;
 };
 
 struct EX_MEM_Reg {
@@ -44,6 +46,7 @@ struct EX_MEM_Reg {
     uint32_t reg_val2 = 0; // Value to store
     uint8_t rd = 0;
     ControlUnit controls;
+    bool valid = false;
 };
 
 struct MEM_WB_Reg {
@@ -51,6 +54,7 @@ struct MEM_WB_Reg {
     uint32_t alu_result = 0;
     uint8_t rd = 0;
     ControlUnit controls;
+    bool valid = false;
 };
 
 class CPU {
@@ -59,8 +63,9 @@ public:
 
     // CSR Addresses
     static constexpr uint32_t CSR_MSTATUS = 0x300, CSR_MTVEC = 0x305, CSR_MEPC = 0x341;
-    static constexpr uint32_t CSR_MCAUSE = 0x342, CSR_MTVAL = 0x343, CSR_MIE = 0x304;
-    static constexpr uint32_t CSR_MIP = 0x344, CSR_MCYCLE = 0xB00;
+    static constexpr uint32_t CSR_MCAUSE  = 0x342, CSR_MTVAL = 0x343, CSR_MIE = 0x304;
+    static constexpr uint32_t CSR_MIP = 0x344, CSR_MCYCLE = 0xB00, CSR_MINSTRET = 0xB02;
+
 
     // Exception Causes
     static constexpr uint32_t CAUSE_ECALL_M_MODE = 11;
