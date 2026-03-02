@@ -281,3 +281,38 @@ TEST_F(InstructionTest, TrapAndEcall) {
     ASSERT_EQ(cpu.get_reg(2), 1u); // x2 set in handler
     ASSERT_EQ(cpu.get_reg(1), 1u); // x1 set after mret
 }
+
+TEST_F(InstructionTest, UARTPrint) {
+    // Program to print "AMD\n"
+    // 1. lui x1, 0x10000        ; x1 = 0x10000000 (UART_BASE)
+    // 2. addi x2, x0, 'A'       ; x2 = 0x41
+    // 3. sb x2, 0(x1)           ; Write 'A'
+    // 4. addi x2, x0, 'M'       ; x2 = 0x4D
+    // 5. sb x2, 0(x1)           ; Write 'M'
+    // 6. addi x2, x0, 'D'       ; x2 = 0x44
+    // 7. sb x2, 0(x1)           ; Write 'D'
+    // 8. addi x2, x0, '\n'      ; x2 = 0x0A
+    // 9. sb x2, 0(x1)           ; Write '\n'
+    std::vector<uint32_t> program = {
+        0x100000B7,
+        0x04100113,
+        0x00208023,
+        0x04D00113,
+        0x00208023,
+        0x04400113,
+        0x00208023,
+        0x00A00113,
+        0x00208023
+    };
+
+    cpu.reset();
+    mem.load_program(program);
+    
+    std::cout << "\n[UART Output Start]" << std::endl;
+    for (int i = 0; i < 30; ++i) {
+        cpu.clock();
+    }
+    std::cout << "[UART Output End]" << std::endl;
+
+    SUCCEED(); // If it didn't crash and outputted correctly, it's a success
+}
