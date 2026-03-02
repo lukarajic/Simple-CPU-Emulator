@@ -86,7 +86,6 @@ private:
     std::unordered_map<uint32_t, uint32_t> csrs;
 
     bool stall = false;
-    bool flush = false;
 
     // Pipeline registers
     IF_ID_Reg if_id_reg;
@@ -95,10 +94,10 @@ private:
     MEM_WB_Reg mem_wb_reg;
 
     // Pipeline stage methods
-    void if_stage();
-    void id_stage();
-    void ex_stage();
-    void mem_stage();
+    void if_stage(IF_ID_Reg& next_if_id, uint32_t& next_pc);
+    void id_stage(ID_EX_Reg& next_id_ex, IF_ID_Reg& next_if_id);
+    void ex_stage(EX_MEM_Reg& next_ex_mem, uint32_t& next_pc, bool& flush);
+    void mem_stage(MEM_WB_Reg& next_mem_wb);
     void wb_stage();
 
     // Private helpers
