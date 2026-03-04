@@ -10,11 +10,19 @@ void print_summary(const CPU& cpu) {
     uint32_t instret = cpu.get_csr(CPU::CSR_MINSTRET);
     double ipc = (cycles > 0) ? (double)instret / cycles : 0;
 
+    uint32_t cache_hits = cpu.get_cache_hits();
+    uint32_t cache_misses = cpu.get_cache_misses();
+    uint32_t total_accesses = cache_hits + cache_misses;
+    double hit_rate = (total_accesses > 0) ? (double)cache_hits / total_accesses * 100.0 : 0;
+
     std::cout << "\n--- Execution Summary ---" << std::endl;
     std::cout << "Total Cycles:      " << cycles << std::endl;
     std::cout << "Instructions:      " << instret << std::endl;
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "IPC:               " << ipc << std::endl;
+    std::cout << "Cache Hits:        " << cache_hits << std::endl;
+    std::cout << "Cache Misses:      " << cache_misses << std::endl;
+    std::cout << "Cache Hit Rate:    " << hit_rate << "%" << std::endl;
     std::cout << "-------------------------" << std::endl;
 }
 

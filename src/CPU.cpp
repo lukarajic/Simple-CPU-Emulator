@@ -3,7 +3,7 @@
 #include <iostream>
 #include <iomanip>
 
-CPU::CPU(Memory& memory) : mem(memory) {
+CPU::CPU(Memory& memory) : mem(memory), dcache(64, 64) {
     reset();
 }
 
@@ -195,6 +195,13 @@ void CPU::mem_stage(MEM_WB_Reg& next_mem_wb) {
     next_mem_wb.alu_result = ex_mem_reg.alu_result;
     uint32_t addr = ex_mem_reg.alu_result;
     uint8_t funct3 = ex_mem_reg.controls.funct3;
+
+    // Cache Access (only for non-UART addresses)
+    if (ex_mem_reg.valid && (ex_mem_reg.controls.mem_read || ex_mem_reg.controls.mem_write)) {
+        if (addr < Memory::UART_BASE) {
+            dcache.access(addr, ex_mem_reg.controls.mem_write);
+        }
+    }
 
     if (ex_mem_reg.valid && ex_mem_reg.controls.mem_read) {
         switch (funct3) {

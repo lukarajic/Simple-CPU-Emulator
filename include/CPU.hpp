@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include "Cache.hpp"
 
 class Memory; // Forward declaration
 
@@ -79,11 +80,17 @@ public:
     uint32_t get_csr(uint32_t csr_addr) const;
     uint32_t fetch_pc() const { return pc; }
 
+    // Cache Stats
+    uint32_t get_cache_hits() const { return dcache.get_hits(); }
+    uint32_t get_cache_misses() const { return dcache.get_misses(); }
+
 private:
     std::array<uint32_t, 32> regs;
     uint32_t pc;
     Memory& mem;
     std::unordered_map<uint32_t, uint32_t> csrs;
+
+    Cache dcache;
 
     bool stall = false;
 

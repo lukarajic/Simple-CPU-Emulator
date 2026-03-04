@@ -10,8 +10,6 @@ Cache::Cache(uint32_t num_sets, uint32_t block_size)
 
 uint32_t Cache::get_index(uint32_t address) const {
     // index bits = log2(num_sets)
-    // block offset bits = log2(block_size)
-    uint32_t block_offset_bits = static_cast<uint32_t>(std::log2(block_size));
     return (address / block_size) % num_sets;
 }
 
