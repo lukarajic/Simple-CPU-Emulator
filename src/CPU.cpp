@@ -12,6 +12,7 @@ void CPU::reset() {
     pc = 0;
     csrs.clear();
     stall = false;
+    halted = false;
     if_id_reg = {};
     id_ex_reg = {};
     ex_mem_reg = {};
@@ -57,6 +58,9 @@ void CPU::wb_stage() {
         if (mem_wb_reg.controls.reg_write && mem_wb_reg.rd != 0) {
             uint32_t result = mem_wb_reg.controls.mem_read ? mem_wb_reg.mem_data : mem_wb_reg.alu_result;
             regs[mem_wb_reg.rd] = result;
+        }
+        if (mem_wb_reg.controls.halt) {
+            halted = true;
         }
     }
 }
@@ -104,7 +108,14 @@ void CPU::id_stage(ID_EX_Reg& next_id_ex, IF_ID_Reg& next_if_id) {
                 case 0x23: next_id_ex.controls.mem_write = true; next_id_ex.controls.alu_src = true; next_id_ex.imm = sign_extend(((instr >> 25) << 5) | ((instr >> 7) & 0x1F), 12); next_id_ex.controls.alu_op = 6; break;
                 case 0x13: next_id_ex.controls.reg_write = true; next_id_ex.controls.alu_src = true; next_id_ex.imm = sign_extend((instr >> 20) & 0xFFF, 12); next_id_ex.controls.alu_op = 7; break;
                 case 0x33: next_id_ex.controls.reg_write = true; next_id_ex.controls.alu_op = 8; break;
-                case 0x73: next_id_ex.controls.reg_write = true; next_id_ex.controls.alu_op = 9; next_id_ex.imm = (instr >> 20); break;
+                case 0x73: 
+                    next_id_ex.controls.reg_write = true; 
+                    next_id_ex.controls.alu_op = 9; 
+                    next_id_ex.imm = (instr >> 20); 
+                    if (next_id_ex.imm == 0 && next_id_ex.controls.funct3 == 0) {
+                        next_id_ex.controls.halt = true;
+                    }
+                    break;
             }
         }
     }
@@ -149,18 +160,29 @@ void CPU::ex_stage(EX_MEM_Reg& next_ex_mem, uint32_t& next_pc, bool& flush) {
             case 5: case 6: alu_res = op1 + alu_op2; break; // LOAD, STORE
             case 9: // SYSTEM
                 uint32_t csr_addr = id_ex_reg.imm;
-                if (funct3 == 0) { // ECALL or MRET
-                    if (csr_addr == 0x0) { trap(CAUSE_ECALL_M_MODE, id_ex_reg.pc); flush = true; next_pc = pc; }
-                    else if (csr_addr == 0x302) { next_pc = csrs.count(CSR_MEPC) ? csrs[CSR_MEPC] : 0; flush = true; }
+                uint8_t f3 = id_ex_reg.controls.funct3;
+                if (f3 == 0) { // ECALL or MRET
+                    if (csr_addr == 0x0) { // ECALL
+                    flush = true;
+                    if (csrs.count(CSR_MTVEC) && csrs[CSR_MTVEC] != 0) {
+                        trap(CAUSE_ECALL_M_MODE, id_ex_reg.pc);
+                        next_pc = pc;
+                    } else {
+                        next_pc = id_ex_reg.pc;
+                    }
+                } else if (csr_addr == 0x302) { // MRET
+                        next_pc = csrs.count(CSR_MEPC) ? csrs[CSR_MEPC] : 0;
+                        flush = true;
+                    }
                 } else { // CSR
                     uint32_t t = csrs.count(csr_addr) ? csrs[csr_addr] : 0;
                     if (id_ex_reg.rd != 0) alu_res = t;
-                    if (funct3 == 1) csrs[csr_addr] = op1;
-                    else if (funct3 == 2) csrs[csr_addr] = t | op1;
-                    else if (funct3 == 3) csrs[csr_addr] = t & ~op1;
-                    else if (funct3 == 5) csrs[csr_addr] = id_ex_reg.rs1;
-                    else if (funct3 == 6) csrs[csr_addr] = t | id_ex_reg.rs1;
-                    else if (funct3 == 7) csrs[csr_addr] = t & ~id_ex_reg.rs1;
+                    if (f3 == 1) csrs[csr_addr] = op1;
+                    else if (f3 == 2) csrs[csr_addr] = t | op1;
+                    else if (f3 == 3) csrs[csr_addr] = t & ~op1;
+                    else if (f3 == 5) csrs[csr_addr] = id_ex_reg.rs1;
+                    else if (f3 == 6) csrs[csr_addr] = t | id_ex_reg.rs1;
+                    else if (f3 == 7) csrs[csr_addr] = t & ~id_ex_reg.rs1;
                 }
                 break;
         }

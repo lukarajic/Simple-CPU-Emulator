@@ -65,6 +65,11 @@ int main(int argc, char* argv[]) {
         cpu.clock();
         current_cycle++;
 
+        if (cpu.is_halted()) {
+            std::cout << "Halt signal received." << std::endl;
+            break;
+        }
+
         // Basic exit condition: if we hit a sequence of 0s (uninitialized memory)
         // or a very high address. This is a simplification.
         if (cpu.fetch_pc() >= size + 16) { // +16 to allow pipeline to drain

@@ -17,7 +17,8 @@ struct ControlUnit {
     bool mem_write = false;
     bool branch = false;
     bool jump = false;
-    uint8_t alu_op = 0; // Opcode group: 0:LUI, 1:AUIPC, 2:JAL, 3:JALR, 4:BRANCH, 5:LOAD, 6:STORE, 7:OP-IMM, 8:OP
+    bool halt = false;
+    uint8_t alu_op = 0; // Opcode group: 0:LUI, 1:AUIPC, 2:JAL, 3:JALR, 4:BRANCH, 5:LOAD, 6:STORE, 7:OP-IMM, 8:OP, 9:SYSTEM
     uint8_t funct3 = 0;
     uint8_t funct7 = 0;
     bool alu_src = false; // false: reg, true: immediate
@@ -79,6 +80,7 @@ public:
     uint32_t get_reg(int reg_num) const;
     uint32_t get_csr(uint32_t csr_addr) const;
     uint32_t fetch_pc() const { return pc; }
+    bool is_halted() const { return halted; }
 
     // Cache Stats
     uint32_t get_cache_hits() const { return dcache.get_hits(); }
@@ -93,6 +95,7 @@ private:
     Cache dcache;
 
     bool stall = false;
+    bool halted = false;
 
     // Pipeline registers
     IF_ID_Reg if_id_reg;
