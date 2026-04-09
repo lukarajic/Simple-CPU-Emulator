@@ -283,14 +283,14 @@ TEST_F(InstructionTest, TrapAndEcall) {
 }
 
 TEST_F(InstructionTest, UARTPrint) {
-    // Program to print "AMD\n"
+    // Program to print "Hi!\n"
     // 1. lui x1, 0x10000        ; x1 = 0x10000000 (UART_BASE)
-    // 2. addi x2, x0, 'A'       ; x2 = 0x41
-    // 3. sb x2, 0(x1)           ; Write 'A'
-    // 4. addi x2, x0, 'M'       ; x2 = 0x4D
-    // 5. sb x2, 0(x1)           ; Write 'M'
-    // 6. addi x2, x0, 'D'       ; x2 = 0x44
-    // 7. sb x2, 0(x1)           ; Write 'D'
+    // 2. addi x2, x0, 'H'       ; x2 = 0x41
+    // 3. sb x2, 0(x1)           ; Write 'H'
+    // 4. addi x2, x0, 'i'       ; x2 = 0x4D
+    // 5. sb x2, 0(x1)           ; Write 'i'
+    // 6. addi x2, x0, '!'       ; x2 = 0x44
+    // 7. sb x2, 0(x1)           ; Write '!'
     // 8. addi x2, x0, '\n'      ; x2 = 0x0A
     // 9. sb x2, 0(x1)           ; Write '\n'
     std::vector<uint32_t> program = {
